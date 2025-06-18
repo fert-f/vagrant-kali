@@ -1,0 +1,71 @@
+---
+- name: kali setup
+  hosts: all
+  become: true
+  gather_facts: false
+  
+  tasks:
+  - name: copy ssh pubkey to remote 
+    authorized_key:
+      user: vagrant
+      key: "{{ lookup('file', '/vagrant/files/key.pub') }}"
+
+
+  - name: set timezone to America/Los_Angeles
+    timezone:
+      name: America/Los_Angeles
+
+  - name: create user kali
+    user:
+      name: kali
+      groups: sudo
+      append: yes
+      shell: /bin/zsh
+      create_home: yes
+      password: "$6$0adGjDDPLM45xSN6$sac2UJskJr5B4oay5vEN88kZcAwiOGbV/ZTyTImAjqvYs6SRrMUV2MJvu2gs6jmDDcG1WaGku19ItSIkJmEsO."  # Replace with output of: mkpasswd --method=SHA-512
+
+  - name: install tools
+    apt:
+      name: "{{ item }}"
+      update_cache: true
+    loop:
+      - xrdp       # allows remote desktop connections to the Kali machine
+      - tmux        # enables a number of terminals (or windows) to be accessed and controlled from a single terminal like screen
+      # - code-oss    # codium editor for easy code editing
+      # - php-curl    # required for php web app related exploits
+      # - rlwrap      # revserse shell wrapper
+      # - feh         # fast, lightweight image viewer which uses imlib2
+      # - gobuster    # tool used to brute-force URIs including directories and files as well as DNS subdomains
+      # - nuclei      # fast, template based vulnerability scanner focusing on extensive configurability, massive extensibility and ease of use
+      # - dirsearch   # command-line tool designed to brute force directories and files in webservers
+      # - nishang     # framework and collection of scripts and payloads which enables usage of PowerShell for offensive security and post exploitation during Penetration Tests
+      # - seclists    # collection of multiple types of lists used during security assessments
+      # - steghide    # steganography program which hides bits of a data file in some of the least significant bits of another file in such a way that the existence of the data file is not visible and cannot be proven.
+      # - exiftool    # a free and open-source software program for reading, writing, and manipulating image, audio, video, and PDF metadata. 
+
+
+  - name: enable and start xrdp service
+    systemd:
+      name: xrdp
+      enabled: true
+      state: started
+
+  - block:
+    - name: create htb directory 
+      file:
+        state: directory
+        path: /home/kali/htb
+        owner: kali
+        group: kali
+
+    - name: download pimpmykali with git
+      git:
+        repo: https://github.com/Dewalt-arch/pimpmykali.git
+        dest: /home/kali/add-on
+
+    - name: copy ssh pubkey to remote 
+      authorized_key:
+        user: kali
+        key: "{{ lookup('file', '/vagrant/files/key.pub') }}"
+    become: true
+    become_user: kali
